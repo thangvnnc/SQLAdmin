@@ -17,26 +17,45 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+
 // Code tmp ///////////
-var mysql      = require('mysql');
-var connection = mysql.createConnection({
-  host     : '192.168.1.108',
-  user     : 'lindtscript',
-  database     : 'weborder',
-  password : 'lindtscript1'
-});
- 
-connection.connect(function(err) {
-  if (err) {
-    console.error('error connecting: ' + err.stack);
-    return;
-  }
- 
-  console.log('connected as id ' + connection.threadId);
-});
-// tmysql.query("SELECT * FROM tLocation", [], function(rows, err) {
-//     console.log(rows.length);
-// });
+// var getTables = function (dbName) {
+//   return new Promise(function (resolve, reject) {
+//     tmysql.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [dbName], function (rows, err) {
+//       if (err) {
+//         reject(err);
+//         return;
+//       }
+//       resolve(rows);
+//     });
+//   })
+// }
+
+// var getNumberTable = function (dbName) {
+//   return new Promise(function (resolve, reject) {
+//     tmysql.query("SELECT COUNT(TABLE_NAME) as number FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [dbName], function (rows, err) {
+//       if (err) {
+//         reject(err);
+//         return;
+//       }
+//       resolve(rows);
+//     });
+//   })
+// }
+
+// var arrayWorks = [];
+// arrayWorks.push(getTables(process.env.DB_NAME));
+// arrayWorks.push(getNumberTable(process.env.DB_NAME));
+
+// Promise.all(arrayWorks)
+// .catch(error => {
+//   console.error(error);
+//   throw err;
+// })
+// .then(results => {
+//   var resultGetTables = results[0];
+//   console.log(resultGetTables);
+// })
 // Code tmp ///////////
 
 // app.get('/', function(req, res) {
@@ -50,7 +69,7 @@ connection.connect(function(err) {
 //     }
 
 //     console.log('Server started in port: ' + PORT);
-    
+
 //     // chromeLauncher.launch({
 //     //     startingUrl: 'http://localhost:'+PORT
 //     // }).then(chrome => {
