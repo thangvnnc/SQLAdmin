@@ -17,7 +17,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-
 // Code tmp ///////////
 var GetTables = function () {
   return new Promise(function (resolve, reject) {
@@ -83,8 +82,8 @@ app.post('/api/sql/format', function (req, res) {
   }
 
   let result = {
-      code: 0,
-      content: sqlResult
+    code: 0,
+    content: sqlResult
   }
 
   res.send(result);

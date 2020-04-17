@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    
+    <link rel="stylesheet" href="/css/context-menu.css">
+    <script src="/js/context-menu.js"></script>
+
     <%if (error != null) {%>
     <script>
         alert('<%=error%>');
@@ -50,6 +54,10 @@
         .table-expand tr.body td span {
             padding-left: 10px;           
         }
+        .table-expand tr.body td span.pri {
+            text-decoration: underline;
+            color: chocolate;
+        }
 
         .text-sql {
             margin-top: 12px;
@@ -85,7 +93,8 @@
                                 Default: <%= column.COLUMN_DEFAULT %> 
                                 Collation: <%= column.COLLATION_NAME %> 
                                 ">
-                                <span><%= column.COLUMN_NAME %></span>
+                            <span <% if (column.COLUMN_KEY ==="PRI") { %> class="pri" <% } %>
+                                ><%= column.COLUMN_NAME %></span>
                             </td>
                         </tr>    
                     <% }); %>
@@ -111,7 +120,7 @@
               <input type="text" class="form-control" id="sql-ip-indent" value="4" placeholder="Thụt lề">
             </div>
             <div class="form-group col-sm-2">
-                <button type="submit" class="btn btn-success btn-format">Format (Ctr + F5)</button>
+                <button type="submit" class="btn btn-success btn-format">Format (Ctr + F)</button>
             </div>
         </div>
         <div class="row form-row">
@@ -148,7 +157,7 @@
     /////////////////////////////////// Define button support ///////////////////////////////////
     let btnSupports = [
         {
-            cursor: "SELECT\n".length,
+            cursor: "SELECT\n\nFROM\n".length,
             text: "SELECT",
             textSupport: "SELECT\n\nFROM\n\nWHERE ",
             shortKey: "F1",
@@ -222,16 +231,66 @@
         }
     });
 
+    // Key active undo - redu
+    var doActive = false;
+
+    function undo() {
+        if (reduSql.length == 0) {
+            var selectionStart = $('.text-sql').prop("selectionStart");
+            reduSql.push({text: $('.text-sql').val(), cursor: selectionStart});
+        }
+        if (doActive === true) {
+            if (undoSql.length > 0) {
+                let sqlStatusDo = undoSql.pop();
+                $('.text-sql').val(sqlStatusDo.text);
+                setCursorIndex(sqlStatusDo.cursor, 20);
+                reduSql.push(sqlStatusDo);
+            }
+        }
+        if (undoSql.length > 0) {
+            doActive = false;
+            let sqlStatusDo = undoSql.pop();
+            $('.text-sql').val(sqlStatusDo.text);
+            setCursorIndex(sqlStatusDo.cursor, 20);
+            reduSql.push(sqlStatusDo);
+        }
+    }
+
+    function redo() {
+        if (doActive === false) {
+            if (reduSql.length > 0) {
+                let sqlStatusDo = reduSql.pop();
+                $('.text-sql').val(sqlStatusDo.text);
+                setCursorIndex(sqlStatusDo.cursor, 200);
+                undoSql.push(sqlStatusDo);
+            }
+        }
+        if (reduSql.length > 0) {
+            doActive = true;
+            let sqlStatusDo = reduSql.pop();
+            $('.text-sql').val(sqlStatusDo.text);
+            setCursorIndex(sqlStatusDo.cursor, 200);
+            undoSql.push(sqlStatusDo);
+        }
+    }
+
+    function createUndo() {
+        var textSql = $('.text-sql').val();
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        undoSql.push({text: textSql, cursor: selectionStart});
+        reduSql = [];
+    };
+
     function replaceValueTextArea(value) {
         var textSql = $('.text-sql').val();
         var selectionStart = $('.text-sql').prop("selectionStart");
         var selectionEnd = $('.text-sql').prop("selectionEnd");
-        undoSql.push({text: textSql, cursor: selectionStart});
+        createUndo();
         var beforeSelect = textSql.slice(0, selectionStart);
         var afterSelect = textSql.slice(selectionEnd, textSql.length);
         var textSqlNew = beforeSelect + value + afterSelect;
         $('.text-sql').val(textSqlNew);
-        setCursorIndex((beforeSelect + value).length, 100);
+        setCursorIndex((beforeSelect + value).length, 10);
     }
     
     function setCursorIndex(cursor, time) {
@@ -239,6 +298,11 @@
             $('.text-sql').focus();
             $('.text-sql').selectRange(cursor);
         }, time);
+    }
+
+    function setSelectAllText() {
+        $('.text-sql').focus();
+        $('.text-sql').selectRange(0, $('.text-sql').val().length);
     }
 
     $('.text-sql').keydown(function (event) {
@@ -259,32 +323,16 @@
         if (event.which === 9 && event.shiftKey) {
             return false;
         }
-        
-        // Ctr + Shift + Z
-        if (event.which === 90 && event.ctrlKey && event.shiftKey) {
-            if (reduSql.length > 0) {
-                let sqlStatusDo = reduSql.pop();
-                $('.text-sql').val(sqlStatusDo.text);
-                setCursorIndex(sqlStatusDo.cursor, 200);
-                undoSql.push(sqlStatusDo);
-                return false;
-            }
-            return false;
-        }
 
         // Ctr + Z
         if (event.which === 90 && event.ctrlKey && !event.shiftKey) {
-            if (reduSql.length == 0) {
-                var selectionStart = $('.text-sql').prop("selectionStart");
-                reduSql.push({text: $('.text-sql').val(), cursor: selectionStart});
-            }
-            if (undoSql.length > 0) {
-                let sqlStatusDo = undoSql.pop();
-                $('.text-sql').val(sqlStatusDo.text);
-                setCursorIndex(sqlStatusDo.cursor, 200);
-                reduSql.push(sqlStatusDo);
-                return false;
-            }
+            undo();
+            return false;
+        }
+        
+        // Ctr + Shift + Z
+        if (event.which === 90 && event.ctrlKey && event.shiftKey) {
+            redo();
             return false;
         }
         
@@ -368,7 +416,8 @@
                     return;
                 }
 
-                $('.text-sql').val(res.content);
+                setSelectAllText();
+                replaceValueTextArea(res.content);
                 
                 // if ($("#sql-ip-chk-auto-select-all").is(":checked")) {
                 //     $('#sql-res-content').focus();
@@ -425,7 +474,23 @@
         let button = btnSupports[$(this).attr('data-id')];
         processButtonSupport(button);
     });
-    
-</script>
 
+    let menus = [
+        {
+            key: "acronym_column",
+            text: "Thêm ký tự viết tắt column"
+        }
+    ];
+    setContextMenu($('.text-sql'), menus, function(item) {
+        switch (item) {
+            case "acronym_column":
+                var acronym_column = prompt("Nhập ký tự viết tắt cho column", "tb");
+                if (acronym_column == null) {
+                    return;
+                }
+                console.log(acronym_column);   
+            break;
+        }
+    });
+</script>
 </html>

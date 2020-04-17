@@ -1,5 +1,5 @@
-DB_HOST=192.168.1.10
+DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=weborder
-DB_USER=lindtscript
-DB_PASS=lindtscript1
+DB_NAME=zadmin_sale
+DB_USER=root
+DB_PASS=12345678
