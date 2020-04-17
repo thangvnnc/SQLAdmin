@@ -19,60 +19,66 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 
 // Code tmp ///////////
-// var getTables = function (dbName) {
-//   return new Promise(function (resolve, reject) {
-//     tmysql.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [dbName], function (rows, err) {
-//       if (err) {
-//         reject(err);
-//         return;
-//       }
-//       resolve(rows);
-//     });
-//   })
-// }
+var GetTables = function () {
+  return new Promise(function (resolve, reject) {
+    tmysql.query("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [process.env.DB_NAME], function (tables, err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(tables);
+    });
+  })
+}
 
-// var getNumberTable = function (dbName) {
-//   return new Promise(function (resolve, reject) {
-//     tmysql.query("SELECT COUNT(TABLE_NAME) as number FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [dbName], function (rows, err) {
-//       if (err) {
-//         reject(err);
-//         return;
-//       }
-//       resolve(rows);
-//     });
-//   })
-// }
+var GetColumnFromTableName = function (table) {
+  return new Promise(function (resolve, reject) {
+    var tableName = table.TABLE_NAME;
+    tmysql.query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME = ?", [tableName], function (columns, err) {
+      if (err) {
+        reject(err);
+        return;
+      }
 
-// var arrayWorks = [];
-// arrayWorks.push(getTables(process.env.DB_NAME));
-// arrayWorks.push(getNumberTable(process.env.DB_NAME));
+      resolve({ table: table, columns: columns });
+    });
+  })
+}
 
-// Promise.all(arrayWorks)
-// .catch(error => {
-//   console.error(error);
-//   throw err;
-// })
-// .then(results => {
-//   var resultGetTables = results[0];
-//   console.log(resultGetTables);
-// })
-// Code tmp ///////////
+app.get('/', function (req, res) {
+  GetTables()
+    .then(tables => {
+      var workGetColumnTables = [];
+      tables.forEach(table => {
+        workGetColumnTables.push(GetColumnFromTableName(table));
+      });
+      return Promise.all(workGetColumnTables);
+    })
+    .then(tableInfos => {
+      res.render('index', {
+        tableInfos: tableInfos,
+        error: null
+      });
+    })
+    .catch(err => {
+      res.render('index', {
+        tableInfos: null,
+        error: err
+      });
+    });
+});
 
-// app.get('/', function(req, res) {
-//     res.render('index');
-// });
+app.listen(PORT, function (err) {
+  if (err) {
+    console.log(err);
+    return;
+  }
 
-// app.listen(PORT, function(err) {
-//     if (err) {
-//         console.log(err);
-//         return;
-//     }
+  console.log('Server started in port: ' + PORT);
 
-//     console.log('Server started in port: ' + PORT);
-
-//     // chromeLauncher.launch({
-//     //     startingUrl: 'http://localhost:'+PORT
-//     // }).then(chrome => {
-//     //     console.log(`Chrome debugging port running on ${chrome.port}`);
-//     // });
-// });
+  // chromeLauncher.launch({
+  //     startingUrl: 'http://localhost:'+PORT
+  // }).then(chrome => {
+  //     console.log(`Chrome debugging port running on ${chrome.port}`);
+  // });
+});

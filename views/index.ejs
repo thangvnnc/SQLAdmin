@@ -1,8 +1,232 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-    <title><%=title%></title>
+    <title>SQLAdmin</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <%if (error != null) {%>
+    <script>
+        alert('<%=error%>');
+    </script>
+    <%}%>
+    <style>
+        .list-table {
+            height: 100vh;
+            overflow-y: scroll;
+        }
+        .table-expand {
+            border: none;
+            width: 100%;
+        }
+        .table-expand tr {
+            display: none;
+            cursor: pointer;
+        }
+        .table-expand tr:hover {
+            background-color: aquamarine;
+        }
+        .table-expand tr td {
+            width: 100%;
+            position: relative;
+            height: 20px;
+        }
+        .table-expand tr.header {
+            display: table-row;
+            font-weight: bold;            
+        }
+        .table-expand tr td span {
+            top: 0;
+            position: absolute;
+            left: 0;
+            right: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }        
+        .table-expand tr.body td span {
+            padding-left: 10px;           
+        }
+
+        .text-sql {
+            width: 100%;
+            height: calc(50vh);
+            resize: none;
+        }
+    </style>
 </head>
+
 <body>
+    <div class="col-sm-10">
+        <textarea class="text-sql" autofocus>
+        </textarea>
+    </div>
+    <div class="col-sm-2">
+        <div class="list-table">
+            <% tableInfos.forEach(tableInfo => { %> 
+                <table class="table-expand">
+                    <tr class="header">
+                        <td>
+                            <span><%= tableInfo.table.TABLE_NAME %></span>
+                        </td></tr>
+                    <%tableInfo.columns.forEach(column => { %>
+                        <tr class="body">
+                            <td data-placement="bottom" title="
+                                COLUMN INFO
+                                Key: <%= column.COLUMN_KEY %>
+                                Type: <%= column.COLUMN_TYPE %>
+                                Comment: <%= column.COLUMN_COMMENT %>
+                                Null: <%= column.IS_NULLABLE %>
+                                Characterset: <%= column.CHARACTER_SET_NAME %> 
+                                Default: <%= column.COLUMN_DEFAULT %> 
+                                Collation: <%= column.COLLATION_NAME %> 
+                                ">
+                                <span><%= column.COLUMN_NAME %></span>
+                            </td>
+                        </tr>    
+                    <% }); %>
+                </table>
+            <% }); %>
+        </div>
+    </div>
 </body>
+
+<script>
+    // Script support
+    $.fn.selectRange = function(start, end) {
+        if(end === undefined) {
+            end = start;
+        }
+        return this.each(function() {
+            if('selectionStart' in this) {
+                this.selectionStart = start;
+                this.selectionEnd = end;
+            } else if(this.setSelectionRange) {
+                this.setSelectionRange(start, end);
+            } else if(this.createTextRange) {
+                var range = this.createTextRange();
+                range.collapse(true);
+                range.moveEnd('character', end);
+                range.moveStart('character', start);
+                range.select();
+            }
+        });
+    };
+</script>
+
+<script>
+    var undoSql = [];
+    
+    $('.text-sql').val('SELCT * FROM table WHERE a=1234');
+    $('.table-expand tr').contextmenu(function() {
+        return false;
+    });
+    $('.table-expand tr.header').mousedown(function (event) {
+        switch (event.which) {
+        case 1:
+            $(this).nextUntil('tr.header').css('display', function (i, v) {
+                return (this.style.display === 'table-row') ? 'none' : 'table-row';
+            });
+            break;
+        case 2:
+            break;
+        case 3:
+            let value = $(this).find('span').html();
+            setValueTextArea(value);
+            break;
+        default:
+            break;
+        }
+    });
+    $('.table-expand tr.body').mousedown(function (event) {
+        switch (event.which) {
+        case 1:
+            break;
+        case 2:
+            break;
+        case 3:
+            let value = $(this).find('span').html();
+            setValueTextArea(value);
+            break;
+        default:
+            break;
+        }
+    });
+
+    function setValueTextArea(value) {
+        var textSql = $('.text-sql').val();
+        undoSql.push(textSql);
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        var selectionEnd = $('.text-sql').prop("selectionEnd");
+        var beforeSelect = textSql.slice(0, selectionStart);
+        var afterSelect = textSql.slice(selectionEnd, textSql.length);
+        var textSqlNew = beforeSelect + value + afterSelect;
+        $('.text-sql').val(textSqlNew);
+        setTimeout(function() {
+            $('.text-sql').focus();
+            $('.text-sql').selectRange((beforeSelect + value).length);
+        }, 100);
+    }
+
+    $('.text-sql').keydown(function (event) {
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        var selectionEnd = $('.text-sql').prop("selectionEnd");
+
+        // Nút tab
+        if (event.which === 9) {
+            if (selectionStart === selectionEnd) {
+                // Tab vị trí con trỏ
+                setValueTextArea('    ');
+                return false;
+            }
+            
+            return false;
+        }
+        
+        if (event.which === 90 && event.ctrlKey && event.shiftKey) {
+            if (undoSql.length > 0) {
+                let textSqlUndo = undoSql.pop();
+                $('.text-sql').val(textSqlUndo);
+                return false;
+            }
+        }
+    });
+
+    $(".text-sql")
+    .bind("dragover", false)
+    .bind("dragenter", false)
+    .bind("drop", function(e) {
+        var textSelectedDrop = e.originalEvent.dataTransfer.getData("text") || e.originalEvent.dataTransfer.getData("text/plain");
+        var splitTextSelected = textSelectedDrop.split("\n");
+
+        if (splitTextSelected.length <= 0) {
+            return false;
+        }
+
+        if (splitTextSelected.length === 1) {
+            setValueTextArea(splitTextSelected[0]);
+            return false;
+        }
+        
+        let textJoin = "";
+        for(let idx = 0; idx < splitTextSelected.length; idx++) {
+            let text = splitTextSelected[idx];
+            if (idx === splitTextSelected.length - 1) {
+                console.log(1);
+                textJoin += text;
+                break;
+            }
+            text = text.trim();
+            text += ',';
+            text += '\n'
+            textJoin += text; 
+        }
+        setValueTextArea(textJoin);            
+        return false;
+    });
+</script>
 
 </html>

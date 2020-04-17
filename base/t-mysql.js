@@ -14,9 +14,9 @@ var MySqlObject = (function () {
     function _query(query, params, callback) {
         pool.getConnection(function (err, connection) {
             if (err) {
-                connection.release();
+                if (connection) connection.release();
                 callback(null, err);
-                throw err;
+                return;
             }
 
             connection.query(query, params, function (err, rows) {
@@ -26,13 +26,13 @@ var MySqlObject = (function () {
                 else {
                     callback(null, err);
                 }
-                connection.release();
+                if (connection) connection.release();
             });
 
             connection.on('error', function (err) {
-                connection.release();
+                if (connection) connection.release();
                 callback(null, err);
-                throw err;
+                return;
             });
         });
     };
