@@ -52,18 +52,19 @@
         }
 
         .text-sql {
+            margin-top: 12px;
             width: 100%;
             height: calc(50vh);
             resize: none;
+        }
+        
+        .btn-format {
+            margin-top: 25px;
         }
     </style>
 </head>
 
 <body>
-    <div class="col-sm-10">
-        <textarea class="text-sql" autofocus>
-        </textarea>
-    </div>
     <div class="col-sm-2">
         <div class="list-table">
             <% tableInfos.forEach(tableInfo => { %> 
@@ -92,6 +93,32 @@
             <% }); %>
         </div>
     </div>
+    
+    <div class="col-sm-10">
+        <textarea class="text-sql" autofocus>
+        </textarea>
+        <div class="row form-row">
+            <div class="form-group col-sm-4">
+              <label for="sql-ip-start">Bắt đầu</label>
+              <input type="text" class="form-control" id="sql-ip-start" placeholder="Bắt đầu">
+            </div>
+            <div class="form-group col-sm-4">
+              <label for="sql-ip-end">Cuối</label>
+              <input type="text" class="form-control" id="sql-ip-end" placeholder="Cuối">
+            </div> 
+            <div class="form-group col-sm-2">
+              <label for="sql-ip-indent">Thụt lề</label>
+              <input type="text" class="form-control" id="sql-ip-indent" value="4" placeholder="Thụt lề">
+            </div>
+            <div class="form-group col-sm-2">
+                <button type="submit" class="btn btn-success btn-format">Format (Ctr + F5)</button>
+            </div>
+        </div>
+        <div class="row form-row">
+            <div class='btn-supports'>
+            </div>
+        </div>
+    </div>
 </body>
 
 <script>
@@ -118,9 +145,39 @@
 </script>
 
 <script>
+    /////////////////////////////////// Define button support ///////////////////////////////////
+    let btnSupports = [
+        {
+            cursor: "SELECT\n".length,
+            text: "SELECT",
+            textSupport: "SELECT\n\nFROM\n\nWHERE ",
+            shortKey: "F1",
+        },
+        {
+            cursor: "SELECT * FROM\n".length,
+            text: "SELECT * ",
+            textSupport: "SELECT * FROM\n\nWHERE ",
+            shortKey: "F2",
+        },
+        {
+            cursor: "DELETE FROM ".length,
+            text: "DELETE",
+            textSupport: "DELETE FROM  WHERE ",
+            shortKey: "F3",
+        },
+        {
+            cursor: "UPDATE ".length,
+            text: "UPDATE",
+            textSupport: "UPDATE  SET  WHERE ",
+            shortKey: "F4",
+        }
+    ]
+</script>
+
+<script>
     var undoSql = [];
-    
-    $('.text-sql').val('SELCT * FROM table WHERE a=1234');
+    var reduSql = [];
+    $('.text-sql').val('');
     $('.table-expand tr').contextmenu(function() {
         return false;
     });
@@ -135,8 +192,8 @@
             break;
         case 3:
             let value = $(this).find('span').html();
-            setValueTextArea(value);
-            break;
+            replaceValueTextArea(value);
+            return false;
         default:
             break;
         }
@@ -149,26 +206,39 @@
             break;
         case 3:
             let value = $(this).find('span').html();
-            setValueTextArea(value);
-            break;
+            if (event.ctrlKey) {
+                value += "";
+            }
+            else if (event.shiftKey) {
+                value += " = ";
+            }
+            else {
+                value += ",\n";
+            }
+            replaceValueTextArea(value);
+            return false
         default:
             break;
         }
     });
 
-    function setValueTextArea(value) {
+    function replaceValueTextArea(value) {
         var textSql = $('.text-sql').val();
-        undoSql.push(textSql);
         var selectionStart = $('.text-sql').prop("selectionStart");
         var selectionEnd = $('.text-sql').prop("selectionEnd");
+        undoSql.push({text: textSql, cursor: selectionStart});
         var beforeSelect = textSql.slice(0, selectionStart);
         var afterSelect = textSql.slice(selectionEnd, textSql.length);
         var textSqlNew = beforeSelect + value + afterSelect;
         $('.text-sql').val(textSqlNew);
+        setCursorIndex((beforeSelect + value).length, 100);
+    }
+    
+    function setCursorIndex(cursor, time) {
         setTimeout(function() {
             $('.text-sql').focus();
-            $('.text-sql').selectRange((beforeSelect + value).length);
-        }, 100);
+            $('.text-sql').selectRange(cursor);
+        }, time);
     }
 
     $('.text-sql').keydown(function (event) {
@@ -179,23 +249,66 @@
         if (event.which === 9) {
             if (selectionStart === selectionEnd) {
                 // Tab vị trí con trỏ
-                setValueTextArea('    ');
-                return false;
+                replaceValueTextArea('    ');
             }
             
             return false;
         }
+
+        // Shift tab
+        if (event.which === 9 && event.shiftKey) {
+            return false;
+        }
         
+        // Ctr + Shift + Z
         if (event.which === 90 && event.ctrlKey && event.shiftKey) {
-            if (undoSql.length > 0) {
-                let textSqlUndo = undoSql.pop();
-                $('.text-sql').val(textSqlUndo);
+            if (reduSql.length > 0) {
+                let sqlStatusDo = reduSql.pop();
+                $('.text-sql').val(sqlStatusDo.text);
+                setCursorIndex(sqlStatusDo.cursor, 200);
+                undoSql.push(sqlStatusDo);
                 return false;
             }
+            return false;
+        }
+
+        // Ctr + Z
+        if (event.which === 90 && event.ctrlKey && !event.shiftKey) {
+            if (reduSql.length == 0) {
+                var selectionStart = $('.text-sql').prop("selectionStart");
+                reduSql.push({text: $('.text-sql').val(), cursor: selectionStart});
+            }
+            if (undoSql.length > 0) {
+                let sqlStatusDo = undoSql.pop();
+                $('.text-sql').val(sqlStatusDo.text);
+                setCursorIndex(sqlStatusDo.cursor, 200);
+                reduSql.push(sqlStatusDo);
+                return false;
+            }
+            return false;
+        }
+        
+        // Ctr + Y
+        if (event.which === 89 && event.ctrlKey) {
+            return false;
+        }
+
+        // Ctr + F
+        if (event.which === 70 && event.ctrlKey) {
+            // Format sql
+            formatSql();
+            return false;
+        }
+
+        // Buton support
+        let buttonSuport = getButtonFromShortKey(event.key);
+        if (buttonSuport !== null) {
+            processButtonSupport(buttonSuport);
+            return false;
         }
     });
 
-    $(".text-sql")
+    $('.text-sql')
     .bind("dragover", false)
     .bind("dragenter", false)
     .bind("drop", function(e) {
@@ -207,7 +320,7 @@
         }
 
         if (splitTextSelected.length === 1) {
-            setValueTextArea(splitTextSelected[0]);
+            replaceValueTextArea(splitTextSelected[0]);
             return false;
         }
         
@@ -215,7 +328,6 @@
         for(let idx = 0; idx < splitTextSelected.length; idx++) {
             let text = splitTextSelected[idx];
             if (idx === splitTextSelected.length - 1) {
-                console.log(1);
                 textJoin += text;
                 break;
             }
@@ -224,9 +336,96 @@
             text += '\n'
             textJoin += text; 
         }
-        setValueTextArea(textJoin);            
+        replaceValueTextArea(textJoin);            
         return false;
     });
+    
+    //////////////////////////////// Format Sql ////////////////////////////////
+
+    $('.btn-format').click(function(event) {
+        formatSql();
+    });
+
+    function formatSql() {
+        let startSql = $('#sql-ip-start').val();
+        let endSql = $('#sql-ip-end').val();
+        let indentSql = $('#sql-ip-indent').val();
+        let contentSql = $('.text-sql').val();
+        let dataPost = {
+            start: startSql,
+            end: endSql,
+            indent: indentSql,
+            content: contentSql
+        }
+
+        $.ajax({
+            url: "/api/sql/format",
+            type: "post",
+            data: dataPost ,
+            success: function (res) {
+                if (res.code !== 0) {
+                    alert(res.content);
+                    return;
+                }
+
+                $('.text-sql').val(res.content);
+                
+                // if ($("#sql-ip-chk-auto-select-all").is(":checked")) {
+                //     $('#sql-res-content').focus();
+                //     $('#sql-res-content').select();
+                // }
+
+                // if ($("#sql-ip-chk-auto-copy").is(":checked")) {
+                //     $('#sql-res-content').focus();
+                //     $('#sql-res-content').select();
+                //     document.execCommand('copy');
+                // }
+            },
+            error: function(err) {
+                alert(err.statusText + ": " + err.status);
+            }
+        });
+    }
+
+
+    //////////////////////////////// Button support ////////////////////////////////
+    createButtonSupport();
+    function createButtonSupport() {
+        for(let idx = 0; idx < btnSupports.length; idx++) {
+            let button = btnSupports[idx];
+            let buttonSupport = '<button data-id=' + idx + ' >' + button.shortKey+ ': ' + button.text + '</button>'
+            $(".btn-supports").append(buttonSupport);
+        }
+    }
+
+    function processButtonSupport(button) {
+        // Lưu vị trí con trỏ trước đó
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        let textSql = $('.text-sql').val();
+        var beforeSelect = textSql.slice(0, selectionStart);
+        replaceValueTextArea(button.textSupport);
+
+        // Chuyển con trỏ
+        setCursorIndex(beforeSelect.length + button.cursor, 200);
+    }
+
+    function getButtonFromShortKey(key) {
+        let buttonGet = null;
+        btnSupports.forEach(button => {
+            if (button.shortKey == key) {
+                buttonGet = button;
+                return;
+            }
+        });
+        return buttonGet;
+    }
+
+    $('.btn-supports').on('click', 'button', function(event) {
+        // Set code hổ trợ vào theo button
+        let button = btnSupports[$(this).attr('data-id')];
+        processButtonSupport(button);
+    });
+    
 </script>
 
 </html>

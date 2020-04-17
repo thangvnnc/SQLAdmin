@@ -1,11 +1,11 @@
 'use strict';
 const express = require('express')
-const sqlFormatter = require('sql-formatter');
 const app = express();
 const bodyParser = require('body-parser');
 const chromeLauncher = require('chrome-launcher');
 const PORT = process.env.PORT || 9999;
 const path = require('path');
+const tSqlFormater = require('./base/t-sql-formater');
 const tmysql = require('./base/t-mysql');
 
 // Set ejs
@@ -34,7 +34,7 @@ var GetTables = function () {
 var GetColumnFromTableName = function (table) {
   return new Promise(function (resolve, reject) {
     var tableName = table.TABLE_NAME;
-    tmysql.query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME = ?", [tableName], function (columns, err) {
+    tmysql.query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", [process.env.DB_NAME, tableName], function (columns, err) {
       if (err) {
         reject(err);
         return;
@@ -66,6 +66,28 @@ app.get('/', function (req, res) {
         error: err
       });
     });
+});
+
+app.post('/api/sql/format', function (req, res) {
+  let data = req.body;
+  let start = data.start;
+  let end = data.end;
+  let indent = data.indent;
+  let contentReq = data.content;
+  let sqlFomat = tSqlFormater(contentReq, indent);
+
+  let sqlResult = '';
+  let lines = sqlFomat.split('\n');
+  for(let idxLine = 0; idxLine < lines.length; idxLine++) {
+      sqlResult += start + lines[idxLine] + end + '\n';
+  }
+
+  let result = {
+      code: 0,
+      content: sqlResult
+  }
+
+  res.send(result);
 });
 
 app.listen(PORT, function (err) {
