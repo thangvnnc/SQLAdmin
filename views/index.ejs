@@ -13,8 +13,8 @@
     <script src="/js/context-menu.js"></script>
 
     <%if (error != null) {%>
-    <script>
-        alert('<%=error%>');
+    <script language="javascript">
+        alert('<%-error%>');
     </script>
     <%}%>
     <style>
@@ -71,7 +71,7 @@
 <body>
     <div class="col-sm-2">
         <div class="list-table">
-            <% tableInfos.forEach(tableInfo => { %> 
+            <% if (tableInfos) tableInfos.forEach(tableInfo => { %> 
                 <table class="table-expand">
                     <tr class="header">
                         <td>

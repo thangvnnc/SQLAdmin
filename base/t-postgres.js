@@ -3,11 +3,11 @@ var tBase = require('./t-base');
 require('dotenv').config();
 
 var pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
+    host: process.env.DB_POSTGRES_HOST,
+    port: process.env.DB_POSTGRES_PORT,
+    database: process.env.DB_POSTGRES_NAME,
+    user: process.env.DB_POSTGRES_USER,
+    password: process.env.DB_POSTGRES_PASS,
     ssl: false,
     max: 20, // set pool max size to 20
     idleTimeoutMillis: 1000, // close idle clients after 1 second
@@ -43,7 +43,7 @@ module.exports = (function () {
 
     function _getTables() {
         return new Promise(function (resolve, reject) {
-            _query("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = $1", [process.env.DB_SCHEMA], function (tables, err) {
+            _query("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = $1", [process.env.DB_POSTGRES_SCHEMA], function (tables, err) {
                 if (err) {
                     reject(err);
                     return;
@@ -56,7 +56,7 @@ module.exports = (function () {
     function _getColumnFromTable(table) {
         return new Promise(function (resolve, reject) {
             var tableName = table.TABLE_NAME;
-            _query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = $1 AND TABLE_NAME = $2", [process.env.DB_SCHEMA, tableName], function (columns, err) {
+            _query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = $1 AND TABLE_NAME = $2", [process.env.DB_POSTGRES_SCHEMA, tableName], function (columns, err) {
                 if (err) {
                     reject(err);
                     return;

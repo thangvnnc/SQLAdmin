@@ -34,7 +34,7 @@ app.get('/mysql', function (req, res) {
 			});
 		})
 		.catch(err => {
-			res.render('index', {
+            res.render('index', {
 				tableInfos: null,
 				error: err
 			});
