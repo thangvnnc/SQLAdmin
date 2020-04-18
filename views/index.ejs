@@ -54,10 +54,6 @@
         .table-expand tr.body td span {
             padding-left: 10px;           
         }
-        .table-expand tr.body td span.pri {
-            text-decoration: underline;
-            color: chocolate;
-        }
 
         .text-sql {
             margin-top: 12px;
@@ -84,17 +80,9 @@
                     <%tableInfo.columns.forEach(column => { %>
                         <tr class="body">
                             <td data-placement="bottom" title="
-                                COLUMN INFO
-                                Key: <%= column.COLUMN_KEY %>
-                                Type: <%= column.COLUMN_TYPE %>
-                                Comment: <%= column.COLUMN_COMMENT %>
-                                Null: <%= column.IS_NULLABLE %>
-                                Characterset: <%= column.CHARACTER_SET_NAME %> 
-                                Default: <%= column.COLUMN_DEFAULT %> 
-                                Collation: <%= column.COLLATION_NAME %> 
+                                <%= column.T_INFO_OBJECT %> 
                                 ">
-                            <span <% if (column.COLUMN_KEY ==="PRI") { %> class="pri" <% } %>
-                                ><%= column.COLUMN_NAME %></span>
+                            <span><%= column.COLUMN_NAME %></span>
                             </td>
                         </tr>    
                     <% }); %>
