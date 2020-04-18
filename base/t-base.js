@@ -14,7 +14,9 @@ module.exports = (function () {
                 newKey = key.toLowerCase();
             }
             newObject[newKey] = object[key];
-            infoObject += newKey + " : " + object[key] + '\n';
+            if (object[key] !== null) {
+                infoObject += newKey + " : " + object[key] + '\n';
+            }
         }
         newObject['T_INFO_OBJECT']= infoObject;
         return newObject;

@@ -73,15 +73,13 @@
         <div class="list-table">
             <% if (tableInfos) tableInfos.forEach(tableInfo => { %> 
                 <table class="table-expand">
-                    <tr class="header">
+                    <tr class="header" title="<%= tableInfo.table.T_INFO_OBJECT %>">
                         <td>
                             <span><%= tableInfo.table.TABLE_NAME %></span>
                         </td></tr>
                     <%tableInfo.columns.forEach(column => { %>
                         <tr class="body">
-                            <td data-placement="bottom" title="
-                                <%= column.T_INFO_OBJECT %> 
-                                ">
+                            <td data-placement="bottom" title="<%= column.T_INFO_OBJECT %>">
                             <span><%= column.COLUMN_NAME %></span>
                             </td>
                         </tr>    
