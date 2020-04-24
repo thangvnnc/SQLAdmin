@@ -8,6 +8,7 @@ const path = require('path');
 const tSqlFormater = require('./base/t-sql-formater');
 const tMysql = require('./base/t-mysql');
 const tPostgres = require('./base/t-postgres');
+const fs = require('fs');
 
 // Set ejs
 app.set('view engine', 'ejs');
@@ -28,20 +29,29 @@ app.get('/mysql', function (req, res) {
 			return Promise.all(workGetColumnTables);
 		})
 		.then(tableInfos => {
-			res.render('index', {
+			res.render('sql-support', {
 				tableInfos: tableInfos,
 				error: null
 			});
 		})
 		.catch(err => {
-            res.render('index', {
+            res.render('sql-support', {
 				tableInfos: null,
 				error: err
 			});
 		});
 });
 
+app.post('/postgres', function(req, res) {
+	fs.writeFileSync('.pg_env', req.body['info-connect']);
+	tPostgres.recreate()
+	.then(result => {
+		res.redirect('/postgres');
+	});
+});
+
 app.get('/postgres', function(req, res) {
+	var connectionInfo = fs.readFileSync('.pg_env');
     tPostgres.getTables()
     .then(tables => {
         var workGetColumnTables = [];
@@ -50,14 +60,16 @@ app.get('/postgres', function(req, res) {
         });
         return Promise.all(workGetColumnTables);
     }).then(tableInfos => {
-        res.render('index', {
-            tableInfos: tableInfos,
+        res.render('sql-support', {
+			tableInfos: tableInfos,
+			connectionInfo: connectionInfo,
             error: null
         });
     })
     .catch(err => {
-        res.render('index', {
-            tableInfos: null,
+        res.render('sql-support', {
+			tableInfos: null,
+			connectionInfo: connectionInfo,
             error: err
         });
     });

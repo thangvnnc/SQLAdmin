@@ -4,11 +4,11 @@ require('dotenv').config();
 
 var pool = mysql.createPool({
     connectionLimit: 20,
-    host: process.env.DB_MYSQL_HOST,
-    port: process.env.DB_MYSQL_PORT,
-    database: process.env.DB_MYSQL_NAME,
-    user: process.env.DB_MYSQL_USER,
-    password: process.env.DB_MYSQL_PASS,
+    host: process.env.MY_DB_HOST,
+    port: process.env.MY_DB_PORT,
+    database: process.env.MY_DB_NAME,
+    user: process.env.MY_DB_USER,
+    password: process.env.MY_DB_PASS,
 });
 
 module.exports = (function () {
@@ -40,7 +40,7 @@ module.exports = (function () {
 
     function _getTables() {
         return new Promise(function (resolve, reject) {
-            _query("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [process.env.DB_MYSQL_NAME], function (tables, err) {
+            _query("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [process.env.MY_DB_NAME], function (tables, err) {
                 if (err) {
                     reject(err);
                     return;
@@ -53,7 +53,7 @@ module.exports = (function () {
     function _getColumnFromTable(table) {
         return new Promise(function (resolve, reject) {
             var tableName = table.TABLE_NAME;
-            _query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", [process.env.DB_MYSQL_NAME, tableName], function (columns, err) {
+            _query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", [process.env.MY_DB_NAME, tableName], function (columns, err) {
                 if (err) {
                     reject(err);
                     return;
