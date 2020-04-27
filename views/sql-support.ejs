@@ -48,7 +48,6 @@
         }
 
         .sql-content {
-            margin-top: 12px;
             width: 100%;
             height: calc(50vh);
         }
@@ -92,13 +91,21 @@
                     </center>
                 </div>
             </form>
-            
         </div>
     </div>
     
     <div class="col-sm-10">
+        <div class="row form-row" style="margin-top: 15px;">
+            <div class="form-group col-sm-12 btn-controls">
+                <button class="btn btn-success btn-undo" title="Ctr + Z">Undo (Ctr + Z)</button>
+                <button class="btn btn-success btn-redo" title="Ctr + Shift + Z">Redo (Ctr + Shift + Z)</button>
+                <button class="btn btn-success btn-save" title="Ctr + S">Save (Ctr + S)</button>
+                <button class="btn btn-success btn-load" title="Ctr + Shift + L">Load (Ctr + Shift + L)</button>
+                <button class="btn btn-success btn-load-last" title="Ctr + L">Load Last (Ctr + L)</button>
+            </div>
+        </div>
         <div class="form-group sql-content">
-            <textarea class="form-control text-sql" autofocus>
+            <textarea spellcheck="false" class="form-control text-sql" autofocus>
             </textarea>
         </div>      
         <div class="row form-row">
@@ -127,6 +134,13 @@
 
 <script>
     // Script support
+    String.prototype.spliceInsertText = function(start, delCount, newSubStr) {
+        return this.slice(0, start) + newSubStr + this.slice(start + Math.abs(delCount));
+    };
+    String.prototype.rightTrim = function(s) { 
+        return this.replace(new RegExp(s + "*$"),''); 
+    };
+
     $.fn.selectRange = function(start, end) {
         if(end === undefined) {
             end = start;
@@ -149,6 +163,11 @@
 </script>
 
 <script>
+    /////////////////////////////////// Define key ///////////////////////////////////
+    var UNDO_SQL = [];
+    var REDO_SQL = [];
+    let SQL_KEY_SAVE = "TTOOL_SQL_KEY_SAVE";
+    
     /////////////////////////////////// Define button support ///////////////////////////////////
     let btnSupports = [
         {
@@ -179,8 +198,6 @@
 </script>
 
 <script>
-    var undoSql = [];
-    var reduSql = [];
     $('.text-sql').val('');
     $('.table-expand tr').contextmenu(function() {
         return false;
@@ -196,7 +213,7 @@
             break;
         case 3:
             let value = $(this).find('span').html();
-            replaceValueTextArea(value);
+            replaceTextAreaSelected(value);
             return false;
         default:
             break;
@@ -219,7 +236,7 @@
             else {
                 value += ",\n";
             }
-            replaceValueTextArea(value);
+            replaceTextAreaSelected(value);
             return false
         default:
             break;
@@ -230,53 +247,53 @@
     var doActive = false;
 
     function undo() {
-        if (reduSql.length == 0) {
+        if (REDO_SQL.length == 0) {
             var selectionStart = $('.text-sql').prop("selectionStart");
-            reduSql.push({text: $('.text-sql').val(), cursor: selectionStart});
+            REDO_SQL.push({text: $('.text-sql').val(), cursor: selectionStart});
         }
         if (doActive === true) {
-            if (undoSql.length > 0) {
-                let sqlStatusDo = undoSql.pop();
+            if (UNDO_SQL.length > 0) {
+                let sqlStatusDo = UNDO_SQL.pop();
                 $('.text-sql').val(sqlStatusDo.text);
-                setCursorIndex(sqlStatusDo.cursor, 20);
-                reduSql.push(sqlStatusDo);
+                setCursorIndex(sqlStatusDo.cursor, 10);
+                REDO_SQL.push(sqlStatusDo);
             }
         }
-        if (undoSql.length > 0) {
+        if (UNDO_SQL.length > 0) {
             doActive = false;
-            let sqlStatusDo = undoSql.pop();
+            let sqlStatusDo = UNDO_SQL.pop();
             $('.text-sql').val(sqlStatusDo.text);
-            setCursorIndex(sqlStatusDo.cursor, 20);
-            reduSql.push(sqlStatusDo);
+            setCursorIndex(sqlStatusDo.cursor, 10);
+            REDO_SQL.push(sqlStatusDo);
         }
     }
 
     function redo() {
         if (doActive === false) {
-            if (reduSql.length > 0) {
-                let sqlStatusDo = reduSql.pop();
+            if (REDO_SQL.length > 0) {
+                let sqlStatusDo = REDO_SQL.pop();
                 $('.text-sql').val(sqlStatusDo.text);
-                setCursorIndex(sqlStatusDo.cursor, 200);
-                undoSql.push(sqlStatusDo);
+                setCursorIndex(sqlStatusDo.cursor, 10);
+                UNDO_SQL.push(sqlStatusDo);
             }
         }
-        if (reduSql.length > 0) {
+        if (REDO_SQL.length > 0) {
             doActive = true;
-            let sqlStatusDo = reduSql.pop();
+            let sqlStatusDo = REDO_SQL.pop();
             $('.text-sql').val(sqlStatusDo.text);
-            setCursorIndex(sqlStatusDo.cursor, 200);
-            undoSql.push(sqlStatusDo);
+            setCursorIndex(sqlStatusDo.cursor, 10);
+            UNDO_SQL.push(sqlStatusDo);
         }
     }
 
     function createUndo() {
         var textSql = $('.text-sql').val();
         var selectionStart = $('.text-sql').prop("selectionStart");
-        undoSql.push({text: textSql, cursor: selectionStart});
-        reduSql = [];
+        UNDO_SQL.push({text: textSql, cursor: selectionStart});
+        REDO_SQL = [];
     };
 
-    function replaceValueTextArea(value) {
+    function replaceTextAreaSelected(value) {
         var textSql = $('.text-sql').val();
         var selectionStart = $('.text-sql').prop("selectionStart");
         var selectionEnd = $('.text-sql').prop("selectionEnd");
@@ -287,6 +304,11 @@
         $('.text-sql').val(textSqlNew);
         setCursorIndex((beforeSelect + value).length, 10);
     }
+
+    function replaceAllTextArea(value) {
+        setSelectAllText();
+        replaceTextAreaSelected(value);
+    }
     
     function setCursorIndex(cursor, time) {
         setTimeout(function() {
@@ -295,27 +317,48 @@
         }, time);
     }
 
+    function setSelectedText(from, to) {
+        setTimeout(function() {
+            $('.text-sql').focus();
+            $('.text-sql').selectRange(from, to);
+        }, 10);
+    }
+
     function setSelectAllText() {
         $('.text-sql').focus();
         $('.text-sql').selectRange(0, $('.text-sql').val().length);
+    }
+
+    function tabMutilLine() {
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        var selectionEnd = $('.text-sql').prop("selectionEnd");
+        var textSql = $('.text-sql').val();
+
+        var numberLine = textSql.slice(selectionStart, selectionEnd).split('\n').length;
+
+        insertTextMutilLineInCursor('    ');
+        setSelectedText(selectionStart + 4, selectionEnd + (numberLine * 4));
     }
 
     $('.text-sql').keydown(function (event) {
         var selectionStart = $('.text-sql').prop("selectionStart");
         var selectionEnd = $('.text-sql').prop("selectionEnd");
 
-        // Nút tab
-        if (event.which === 9) {
-            if (selectionStart === selectionEnd) {
-                // Tab vị trí con trỏ
-                replaceValueTextArea('    ');
-            }
-            
+        // Shift tab
+        if (event.which === 9 && !event.ctrlKey && event.shiftKey) {
+            console.log('shift + tab')
             return false;
         }
 
-        // Shift tab
-        if (event.which === 9 && event.shiftKey) {
+        // Nút tab
+        if (event.which === 9 && !event.ctrlKey && !event.shiftKey) {
+            tabMutilLine();
+            return false;
+        }
+
+        // Ctr + Shift + Z
+        if (event.which === 90 && event.ctrlKey && event.shiftKey) {
+            redo();
             return false;
         }
 
@@ -325,14 +368,20 @@
             return false;
         }
         
-        // Ctr + Shift + Z
-        if (event.which === 90 && event.ctrlKey && event.shiftKey) {
-            redo();
-            return false;
-        }
-        
         // Ctr + Y
         if (event.which === 89 && event.ctrlKey) {
+            return false;
+        }
+
+        // Ctr + S
+        if (event.which === 83 && event.ctrlKey) {
+            saveSql();
+            return false;
+        }
+
+        // Ctr + L
+        if (event.which === 76 && event.ctrlKey) {
+            loadLastSql();
             return false;
         }
 
@@ -363,7 +412,7 @@
         }
 
         if (splitTextSelected.length === 1) {
-            replaceValueTextArea(splitTextSelected[0]);
+            replaceTextAreaSelected(splitTextSelected[0]);
             return false;
         }
         
@@ -379,12 +428,59 @@
             text += '\n'
             textJoin += text; 
         }
-        replaceValueTextArea(textJoin);            
+        replaceTextAreaSelected(textJoin);            
         return false;
     });
-    
-    //////////////////////////////// Format Sql ////////////////////////////////
 
+    /////////////////////////////// Save Sql ////////////////////////////////
+    function getAllSaveSql() {
+        let value = localStorage.getItem(SQL_KEY_SAVE);
+        if (value === null) {
+            value = JSON.stringify([]);
+            localStorage.setItem(SQL_KEY_SAVE, value);
+        }
+
+        let arraySave = JSON.parse(value);
+        return arraySave;
+    }
+
+    function saveSql() {
+        var textSql = $('.text-sql').val();
+        let valueSaves = getAllSaveSql();
+        valueSaves.push(textSql);
+        let value = JSON.stringify(valueSaves);
+        localStorage.setItem(SQL_KEY_SAVE, value);
+    }
+
+    function loadLastSql() {
+        let valueSaves = getAllSaveSql();
+        if (valueSaves.length > 0) {
+            replaceAllTextArea(valueSaves[valueSaves.length - 1]);
+        }
+    }
+
+    $('.btn-save').on('click', function (event) {
+        saveSql();
+        return false;
+    });
+
+    $('.btn-load-last').on('click', function (event) {
+        loadLastSql();
+        return false;
+    });
+
+    /////////////////////////////// Save Sql ////////////////////////////////
+    $('.btn-undo').on('click', function (event) {
+        undo();
+        return false;
+    });
+
+    $('.btn-redo').on('click', function (event) {
+        redo();
+        return false;
+    });
+
+    //////////////////////////////// Format Sql ////////////////////////////////
     $('.btn-format').click(function(event) {
         formatSql();
     });
@@ -411,26 +507,13 @@
                     return;
                 }
 
-                setSelectAllText();
-                replaceValueTextArea(res.content);
-                
-                // if ($("#sql-ip-chk-auto-select-all").is(":checked")) {
-                //     $('#sql-res-content').focus();
-                //     $('#sql-res-content').select();
-                // }
-
-                // if ($("#sql-ip-chk-auto-copy").is(":checked")) {
-                //     $('#sql-res-content').focus();
-                //     $('#sql-res-content').select();
-                //     document.execCommand('copy');
-                // }
+                replaceAllTextArea(res.content);
             },
             error: function(err) {
                 alert(err.statusText + ": " + err.status);
             }
         });
     }
-
 
     //////////////////////////////// Button support ////////////////////////////////
     createButtonSupport();
@@ -447,10 +530,10 @@
         var selectionStart = $('.text-sql').prop("selectionStart");
         let textSql = $('.text-sql').val();
         var beforeSelect = textSql.slice(0, selectionStart);
-        replaceValueTextArea(button.textSupport);
+        replaceTextAreaSelected(button.textSupport);
 
         // Chuyển con trỏ
-        setCursorIndex(beforeSelect.length + button.cursor, 200);
+        setCursorIndex(beforeSelect.length + button.cursor, 10);
     }
 
     function getButtonFromShortKey(key) {
@@ -470,20 +553,72 @@
         processButtonSupport(button);
     });
 
+    function insertTextMutilLineInCursor(textContent) {
+        var textSql = $('.text-sql').val();
+        var selectionStart = $('.text-sql').prop("selectionStart");
+        var selectionEnd = $('.text-sql').prop("selectionEnd");
+        // var textSqlSelectedSplits = textSql.slice(selectionStart, selectionEnd).split('\n');
+
+        let indexFirstLineSelected = -1;
+        for (let idx = selectionStart - 1; idx >= 0; idx--) {
+            if (idx === 0) {
+                indexFirstLineSelected = 0;
+                break;
+            }
+            if (textSql[idx] == '\n') {
+                indexFirstLineSelected = idx + 1;
+                break;
+            }
+        }
+
+        let indexLastLineSelected = -1;
+        for (let idx = selectionEnd; idx < textSql.length; idx++) {
+            if (textSql[idx] == '\n') {
+                indexLastLineSelected = idx;
+                break;
+            }
+            if (idx == textSql.length - 1) {
+                indexLastLineSelected = idx;
+                break;
+            }
+        }
+
+        let cursorSkipInsertText = selectionStart - indexFirstLineSelected;
+        var textSqlSelectedLineSplits = textSql.slice(indexFirstLineSelected, indexLastLineSelected).split('\n');
+        for (let idx = 0; idx < textSqlSelectedLineSplits.length; idx++) {
+            textSqlSelectedLineSplits[idx] = textSqlSelectedLineSplits[idx].rightTrim().spliceInsertText(cursorSkipInsertText, 0, textContent);
+        }
+
+        var contentSqlNew = textSqlSelectedLineSplits.join("\n");
+        var textSqlNew = textSql.slice(0, indexFirstLineSelected) + contentSqlNew + textSql.slice(indexLastLineSelected, textSql.length);
+        replaceAllTextArea(textSqlNew);
+    }
+
     let menus = [
         {
+            key: "insert_mutil_line",
+            text: "Thêm ký tự đầu corsor nhiều dòng như dùng phím alt quét đứng"
+        },
+        {
             key: "acronym_column",
-            text: "Thêm ký tự viết tắt column"
+            text: "Thêm ký tự viết tắt cho columns"
         }
     ];
     setContextMenu($('.text-sql'), menus, function(item) {
         switch (item) {
-            case "acronym_column":
-                var acronym_column = prompt("Nhập ký tự viết tắt cho column", "tb");
+            case "insert_mutil_line":
+                var acronym_column = prompt("Nhập ký tự thêm đầu corsor:");
                 if (acronym_column == null) {
                     return;
                 }
-                console.log(acronym_column);   
+                insertTextMutilLineInCursor(acronym_column);
+            break;
+            case "acronym_column":
+                var acronym_column = prompt("Nhập ký tự viết tắt cho columns:");
+                if (acronym_column == null) {
+                    return;
+                }
+                insertTextMutilLineInCursor(acronym_column + ".");
             break;
         }
     });
