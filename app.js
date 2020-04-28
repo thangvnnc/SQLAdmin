@@ -19,7 +19,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.post('/mysql', function(req, res) {
+	fs.writeFileSync('.my_env', req.body['info-connect']);
+	tMysql.recreate()
+	.then(result => {
+		res.redirect('/mysql');
+	});
+});
+
 app.get('/mysql', function (req, res) {
+	var connectionInfo = fs.readFileSync('.my_env');
 	tMysql.getTables()
 		.then(tables => {
 			var workGetColumnTables = [];
@@ -31,12 +40,14 @@ app.get('/mysql', function (req, res) {
 		.then(tableInfos => {
 			res.render('sql-support', {
 				tableInfos: tableInfos,
+				connectionInfo: connectionInfo,
 				error: null
 			});
 		})
 		.catch(err => {
             res.render('sql-support', {
 				tableInfos: null,
+				connectionInfo: connectionInfo,
 				error: err
 			});
 		});
@@ -76,20 +87,20 @@ app.get('/postgres', function(req, res) {
 })
 
 app.post('/api/sql/format', function (req, res) {
-	let data = req.body;
-	let start = data.start;
-	let end = data.end;
-	let indent = data.indent;
-	let contentReq = data.content;
-	let sqlFomat = tSqlFormater(contentReq, indent);
+	var data = req.body;
+	var start = data.start;
+	var end = data.end;
+	var indent = data.indent;
+	var contentReq = data.content;
+	var sqlFomat = tSqlFormater(contentReq, indent);
 
-	let sqlResult = '';
-	let lines = sqlFomat.split('\n');
-	for (let idxLine = 0; idxLine < lines.length; idxLine++) {
+	var sqlResult = '';
+	var lines = sqlFomat.split('\n');
+	for (var idxLine = 0; idxLine < lines.length; idxLine++) {
 		sqlResult += start + lines[idxLine] + end + '\n';
 	}
 
-	let result = {
+	var result = {
 		code: 0,
 		content: sqlResult
 	}
