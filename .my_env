@@ -1,5 +1,5 @@
-host=103.1.236.126
+host=localhost
 port=3306
-database=zadmin_medixlink
-user=medixlink
-password=Thang01652608118
+database=localdb
+user=root
+password=12345678
